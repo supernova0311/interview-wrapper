@@ -671,7 +671,7 @@ OVERALL SCORE: ${analysisReport.overallScore}/10
                 <pre className="whitespace-pre-wrap">{output}</pre>
               ) : (
                 <div className="text-muted-foreground">
-                  <Alert variant="warning" className="mb-4 bg-yellow-900/30 border-yellow-800">
+                  <Alert variant="destructive" className="mb-4 bg-yellow-900/30 border-yellow-800">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>API Key Required</AlertTitle>
                     <AlertDescription>
