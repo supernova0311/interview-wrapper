@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import Editor from "@monaco-editor/react"
-import Webcam from "react-webcam"
-import { Conversation } from "@/components/Conversation"
+
 
 declare global {
   interface Window {
