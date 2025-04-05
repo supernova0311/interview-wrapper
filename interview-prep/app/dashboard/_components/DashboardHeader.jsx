@@ -7,7 +7,7 @@ import React from "react";
 
 function DashboardHeader() {
   const pathname = usePathname();
-  const isDashboardRoute = pathname === "/dashboard";
+  const isDashboardRoute = pathname === "/app";
 
   // Condition to check whether we should show both the logo + name and the user button
   const showLogoAndName = !(isDashboardRoute && window.innerWidth >= 768); // Only hide logo on medium screen (md) on /dashboard route
@@ -22,7 +22,7 @@ function DashboardHeader() {
       {showLogoAndName && (
         <div className="flex items-center space-x-2">
           
-          <Link href={"/dashboard"}>
+          <Link href={"/app"}>
             <span className="text-xl md:text-2xl font-bold text-emerald-400">Interview-Wrapper</span>
           </Link>
         </div>

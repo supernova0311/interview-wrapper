@@ -11,7 +11,7 @@ function DasboardBtn() {
   if (isCandidate || isLoading) return null;
 
   return (
-    <Link href={"/dashboard"}>
+    <Link href={"/app"}>
       <Button className="gap-2 font-medium" size={"sm"}>
         <SparklesIcon className="size-4" />
         Dashboard
