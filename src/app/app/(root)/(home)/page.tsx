@@ -11,10 +11,10 @@ import MeetingModal from "@/components/MeetingModal";
 import LoaderUI from "@/components/LoaderUI";
 import { Loader2Icon } from "lucide-react";
 import MeetingCard from "@/components/MeetingCard";
-import { motion } from "framer-motion";
 
 export default function Home() {
   const router = useRouter();
+
   const { isInterviewer, isCandidate, isLoading } = useUserRole();
   const interviews = useQuery(api.interviews.getMyInterviews);
   const [showModal, setShowModal] = useState(false);
@@ -40,37 +40,26 @@ export default function Home() {
   return (
     <div className="container max-w-7xl mx-auto p-6">
       {/* WELCOME SECTION */}
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="rounded-xl bg-gradient-to-br from-gray-900 to-gray-800 p-6 border border-gray-700 shadow-lg mb-10"
-      >
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+      <div className="rounded-lg bg-card p-6 border shadow-sm mb-10">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
           Welcome back!
         </h1>
-        <p className="text-gray-400 mt-2">
+        <p className="text-muted-foreground mt-2">
           {isInterviewer
             ? "Manage your interviews and review candidates effectively"
             : "Access your upcoming interviews and preparations"}
         </p>
-      </motion.div>
+      </div>
 
       {isInterviewer ? (
         <>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {QUICK_ACTIONS.map((action, index) => (
-              <motion.div
+            {QUICK_ACTIONS.map((action) => (
+              <ActionCard
                 key={action.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ y: -5 }}
-              >
-                <ActionCard
-                  action={action}
-                  onClick={() => handleQuickAction(action.title)}
-                />
-              </motion.div>
+                action={action}
+                onClick={() => handleQuickAction(action.title)}
+              />
             ))}
           </div>
 
@@ -83,41 +72,26 @@ export default function Home() {
         </>
       ) : (
         <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <h1 className="text-3xl font-bold text-gray-200">Your Interviews</h1>
-            <p className="text-gray-400 mt-1">View and join your scheduled interviews</p>
-          </motion.div>
+          <div>
+            <h1 className="text-3xl font-bold">Your Interviews</h1>
+            <p className="text-muted-foreground mt-1">View and join your scheduled interviews</p>
+          </div>
 
           <div className="mt-8">
             {interviews === undefined ? (
               <div className="flex justify-center py-12">
-                <Loader2Icon className="h-8 w-8 animate-spin text-gray-400" />
+                <Loader2Icon className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : interviews.length > 0 ? (
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {interviews.map((interview, index) => (
-                  <motion.div
-                    key={interview._id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    whileHover={{ scale: 1.02 }}
-                  >
-                    <MeetingCard interview={interview} />
-                  </motion.div>
+                {interviews.map((interview) => (
+                  <MeetingCard key={interview._id} interview={interview} />
                 ))}
               </div>
             ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center py-12 text-gray-400 rounded-lg border border-gray-700 bg-gray-900/50"
-              >
+              <div className="text-center py-12 text-muted-foreground">
                 You have no scheduled interviews at the moment
-              </motion.div>
+              </div>
             )}
           </div>
         </>

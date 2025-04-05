@@ -6,14 +6,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/
 import { CalendarIcon } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
+import { useRouter } from "next/navigation";
 
 type Interview = Doc<"interviews">;
 
 function MeetingCard({ interview }: { interview: Interview }) {
+  const router = useRouter();
   const { joinMeeting } = useMeetingActions();
 
   const status = getMeetingStatus(interview);
   const formattedDate = format(new Date(interview.startTime), "EEEE, MMMM d · h:mm a");
+
+  const handleJoinMeeting = () => {
+    // Redirect directly to the specific meeting URL
+    router.push(`/app/meeting/${interview.streamCallId}`);
+    
+    // Or if you still need to call joinMeeting for other logic:
+    // joinMeeting(interview.streamCallId);
+    // router.push(`/app/meeting/${interview.streamCallId}`);
+  };
 
   return (
     <Card>
@@ -42,7 +53,7 @@ function MeetingCard({ interview }: { interview: Interview }) {
 
       <CardContent>
         {status === "live" && (
-          <Button className="w-full" onClick={() => joinMeeting(interview.streamCallId)}>
+          <Button className="w-full" onClick={handleJoinMeeting}>
             Join Meeting
           </Button>
         )}
@@ -56,4 +67,5 @@ function MeetingCard({ interview }: { interview: Interview }) {
     </Card>
   );
 }
+
 export default MeetingCard;
