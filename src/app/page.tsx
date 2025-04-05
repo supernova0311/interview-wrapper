@@ -138,13 +138,7 @@ export default function LandingPage() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-gray-600 text-white hover:bg-gray-700 backdrop-blur-sm"
-                >
-                  Learn More
-                </Button>
+                
               </motion.div>
             </div>
           </motion.div>
