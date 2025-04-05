@@ -11,6 +11,7 @@ import MeetingModal from "@/components/MeetingModal";
 import LoaderUI from "@/components/LoaderUI";
 import { Loader2Icon } from "lucide-react";
 import MeetingCard from "@/components/MeetingCard";
+import Link from "next/link";
 
 export default function Home() {
   const router = useRouter();
@@ -39,8 +40,24 @@ export default function Home() {
 
   return (
     <div className="container max-w-7xl mx-auto p-6">
+      {/* MODULE BAR */}
+      <div className="flex flex-wrap gap-4 mb-8">
+        <Link
+          href="/ai-bot"
+          className="flex-1 min-w-[200px] px-6 py-3 bg-gradient-to-r from-secondary to-secondary/90 text-white rounded-lg border border-secondary/20 shadow-sm hover:shadow-md transition-all duration-300 font-medium text-center flex items-center justify-center gap-2 hover:scale-[1.02]"
+        >
+          <span className="whitespace-nowrap">AI Bot</span>
+        </Link>
+        <Link
+          href="https://interview-wrapper-prep.vercel.app/dashboard"
+          className="flex-1 min-w-[200px] px-6 py-3 bg-gradient-to-r from-secondary to-secondary/90 text-white rounded-lg border border-secondary/20 shadow-sm hover:shadow-md transition-all duration-300 font-medium text-center flex items-center justify-center gap-2 hover:scale-[1.02]"
+        >
+          <span className="whitespace-nowrap">AI Interview Prep</span>
+        </Link>
+      </div>
+
       {/* WELCOME SECTION */}
-      <div className="rounded-lg bg-card p-6 border shadow-sm mb-10">
+      <div className="rounded-lg bg-card p-6 border border-border shadow-sm mb-10">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
           Welcome back!
         </h1>
@@ -74,7 +91,9 @@ export default function Home() {
         <>
           <div>
             <h1 className="text-3xl font-bold">Your Interviews</h1>
-            <p className="text-muted-foreground mt-1">View and join your scheduled interviews</p>
+            <p className="text-muted-foreground mt-1">
+              View and join your scheduled interviews
+            </p>
           </div>
 
           <div className="mt-8">
