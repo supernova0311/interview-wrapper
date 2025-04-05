@@ -1,21 +1,44 @@
 import { type NextRequest, NextResponse } from "next/server"
 
+// Mock analysis data as fallback only
+const MOCK_ANALYSIS = {
+  approach: "This is a mock analysis. The API call failed or is not configured properly.",
+  logic: "Please check your Gemini API key configuration and server logs.",
+  aiDetection: "This is not a real AI analysis - this is fallback mock data.",
+  suggestions: "Set up your Gemini API key properly to get real analysis.",
+  overallScore: 5,
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { code, language, apiKey, codeSnapshots, typingPatterns, averageTypingInterval, sessionDuration } =
+    console.log("Analyze code API route called")
+
+    const { code, language, codeSnapshots, typingPatterns, averageTypingInterval, sessionDuration } =
       await request.json()
 
     if (!code || !language) {
+      console.error("Missing required parameters")
       return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
     }
 
-    // Use provided API key or get from environment variables
-    const geminiApiKey = apiKey || process.env.GEMINI_API_KEY
+    // Log API key status for debugging
+    const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY
+    console.log("API key available:", !!apiKey)
 
-    if (!geminiApiKey) {
-      console.error("Gemini API key not provided and not set in environment variables")
-      return NextResponse.json({ error: "Gemini API key not configured" }, { status: 500 })
+    if (!apiKey) {
+      console.error("GEMINI_API_KEY is not set in environment variables")
+      return NextResponse.json(
+        {
+          error: "Gemini API key not configured. Please add GEMINI_API_KEY to your environment variables.",
+          isMockData: true,
+          ...MOCK_ANALYSIS,
+        },
+        { status: 200 },
+      )
     }
+
+    // Get the model name from environment variable or use a default
+    const modelName = process.env.GEMINI_MODEL_NAME || "models/gemini-1.5-flash"
 
     // Construct the prompt for Gemini with additional context
     const prompt = `
@@ -59,70 +82,156 @@ export async function POST(request: NextRequest) {
       \`\`\`
     `
 
-    // Call Gemini API
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": geminiApiKey,
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: prompt,
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 8192,
-        },
-      }),
-    })
+    console.log(`Calling Gemini API with model: ${modelName}, prompt length: ${prompt.length}`)
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error("Gemini API Error:", errorText)
-      return NextResponse.json({ error: `Gemini API error: ${response.status}` }, { status: response.status })
+    // First, let's try to list available models to help with debugging
+    try {
+      const listModelsResponse = await fetch("https://generativelanguage.googleapis.com/v1beta/models", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+      })
+
+      if (listModelsResponse.ok) {
+        const modelsData = await listModelsResponse.json()
+        console.log("Available models:", modelsData.models?.map((m: any) => m.name).join(", ") || "No models found")
+      } else {
+        console.log("Failed to list models:", await listModelsResponse.text())
+      }
+    } catch (error) {
+      console.error("Error listing models:", error)
     }
 
-    const data = await response.json()
+    // Try different model endpoints
+    const modelEndpoints = [
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash:generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent",
+      `https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent`,
+    ]
 
-    // Extract the text from Gemini's response
-    const responseText = data.candidates[0]?.content?.parts[0]?.text || ""
+    let successfulResponse = null
+    let lastError = null
 
-    // Try to parse the JSON from the response
-    let analysisResult
-    try {
-      // Find JSON in the response (it might be surrounded by markdown code blocks)
-      const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) ||
-        responseText.match(/```\n([\s\S]*?)\n```/) || [null, responseText]
+    // Try each endpoint until one works
+    for (const endpoint of modelEndpoints) {
+      try {
+        console.log(`Trying endpoint: ${endpoint}`)
 
-      const jsonText = jsonMatch[1] || responseText
-      analysisResult = JSON.parse(jsonText)
-    } catch (error) {
-      console.error("Error parsing Gemini response:", error)
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: prompt,
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.2,
+              topK: 40,
+              topP: 0.95,
+              maxOutputTokens: 8192,
+            },
+          }),
+        })
 
-      // If parsing fails, create a structured response from the text
-      analysisResult = {
-        approach: "Failed to parse structured response. Raw analysis:",
-        logic: "",
-        aiDetection: "",
-        suggestions: "",
-        overallScore: 0,
-        rawResponse: responseText,
+        console.log(`Response from ${endpoint}: ${response.status}`)
+
+        if (response.ok) {
+          successfulResponse = response
+          break
+        } else {
+          const errorText = await response.text()
+          console.log(`Error from ${endpoint}: ${errorText}`)
+          lastError = { status: response.status, text: errorText }
+        }
+      } catch (error) {
+        console.error(`Error with endpoint ${endpoint}:`, error)
+        lastError = error
       }
     }
 
-    return NextResponse.json(analysisResult)
+    if (!successfulResponse) {
+      console.error("All model endpoints failed. Last error:", lastError)
+      return NextResponse.json(
+        {
+          error: `All Gemini API endpoints failed. Last error: ${JSON.stringify(lastError)}`,
+          isMockData: true,
+          ...MOCK_ANALYSIS,
+        },
+        { status: 200 },
+      )
+    }
+
+    // Process the successful response
+    try {
+      const data = await successfulResponse.json()
+      console.log("Gemini API response received, parsing...")
+
+      // Extract the text from Gemini's response
+      const responseText = data.candidates[0]?.content?.parts[0]?.text || ""
+      console.log("Response text length:", responseText.length)
+
+      // Try to parse the JSON from the response
+      let analysisResult
+      try {
+        // Find JSON in the response (it might be surrounded by markdown code blocks)
+        const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) ||
+          responseText.match(/```\n([\s\S]*?)\n```/) || [null, responseText]
+
+        const jsonText = jsonMatch[1] || responseText
+        analysisResult = JSON.parse(jsonText)
+        console.log("Successfully parsed JSON response")
+
+        // Add flag to indicate this is real data
+        analysisResult.isMockData = false
+
+        return NextResponse.json(analysisResult)
+      } catch (error) {
+        console.error("Error parsing Gemini response:", error)
+
+        // If parsing fails, create a structured response from the text
+        return NextResponse.json({
+          approach: "Failed to parse structured response. Raw analysis: " + responseText.substring(0, 500),
+          logic: "Error parsing Gemini response.",
+          aiDetection: "Unable to determine.",
+          suggestions: "Please try again with a different code sample.",
+          overallScore: 0,
+          isMockData: false,
+          rawResponse: responseText.substring(0, 1000),
+        })
+      }
+    } catch (apiError) {
+      console.error("Error processing API response:", apiError)
+      return NextResponse.json(
+        {
+          error: "Failed to process API response: " + (apiError as Error).message,
+          isMockData: true,
+          ...MOCK_ANALYSIS,
+        },
+        { status: 200 },
+      )
+    }
   } catch (error) {
     console.error("Server error:", error)
-    return NextResponse.json({ error: "Failed to analyze code: " + (error as Error).message }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Failed to analyze code: " + (error as Error).message,
+        isMockData: true,
+        ...MOCK_ANALYSIS,
+      },
+      { status: 200 },
+    )
   }
 }
 

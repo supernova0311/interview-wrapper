@@ -5,15 +5,17 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "./ui/resiz
 import { ScrollArea } from "./ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { Slider } from "./ui/slider"
-import { PlayIcon, TerminalIcon, Type, Download, X, Sparkles } from 'lucide-react'
+import { PlayIcon, TerminalIcon, Type, Download, X, Sparkles, AlertTriangle } from "lucide-react"
 import Editor, { type Monaco } from "@monaco-editor/react"
 import { Button } from "./ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
-import { Loader2 } from 'lucide-react'
+import { Loader2 } from "lucide-react"
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
 import type { editor } from "monaco-editor"
+import { toast } from "./ui/use-toast"
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert"
 
 // Simple empty function templates for each language
 const STARTER_CODE = {
@@ -75,26 +77,22 @@ function CodeEditor() {
     aiDetection: string
     suggestions: string
     overallScore: number
+    isMockData?: boolean
   } | null>(null)
-  const [geminiApiKey, setGeminiApiKey] = useState<string | null>(null)
   const reportRef = useRef<HTMLDivElement>(null)
   const [activeTab, setActiveTab] = useState("approach")
   const [exportLoading, setExportLoading] = useState(false)
   const [exportFormat, setExportFormat] = useState<"pdf" | "docx" | "txt">("pdf")
 
+  // Debugging state
+  const [debugInfo, setDebugInfo] = useState<string>("")
+
   // Coding session tracking
   const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null)
   const [codeSnapshots, setCodeSnapshots] = useState<Array<{ timestamp: Date; code: string }>>([])
-  const [analysisStatus, setAnalysisStatus] = useState<"idle" | "collecting" | "analyzing" | "ready">("idle")
-  const [analysisIndicator, setAnalysisIndicator] = useState<string>("AI observing...")
-  const [autoAnalysisEnabled, setAutoAnalysisEnabled] = useState(true)
-  const [lastAnalysisTime, setLastAnalysisTime] = useState<Date | null>(null)
   const [typingPatterns, setTypingPatterns] = useState<Array<{ timestamp: Date; interval: number }>>([])
   const lastKeyPressTime = useRef<Date | null>(null)
-  const analysisTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const codeChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  
+
   // Monaco instance reference
   const monacoRef = useRef<Monaco | null>(null)
 
@@ -102,19 +100,10 @@ function CodeEditor() {
   useEffect(() => {
     // Initialize session
     setSessionStartTime(new Date())
-    setAnalysisStatus("collecting")
-    
-    // Use a hardcoded API key for development/testing
-    // In production, this would come from environment variables
-    setGeminiApiKey(process.env.NEXT_PUBLIC_GEMINI_API_KEY || "YOUR_GEMINI_API_KEY");
 
-    // Cleanup on unmount
-    return () => {
-      if (analysisTimeoutRef.current) clearTimeout(analysisTimeoutRef.current)
-      if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current)
-      if (codeChangeTimeoutRef.current) clearTimeout(codeChangeTimeoutRef.current)
-    }
-  }, [])
+    // Take initial code snapshot
+    setCodeSnapshots([{ timestamp: new Date(), code: code }])
+  }, [code])
 
   const handleLanguageChange = (newLanguage: "javascript" | "python" | "java") => {
     setLanguage(newLanguage)
@@ -177,11 +166,6 @@ function CodeEditor() {
         setError(data.error)
       } else {
         setOutput(data.output || "Program executed with no output")
-
-        // Trigger analysis after successful execution if enough time has passed
-        if (autoAnalysisEnabled && (!lastAnalysisTime || new Date().getTime() - lastAnalysisTime.getTime() > 60000)) {
-          triggerAnalysis()
-        }
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err)
@@ -194,8 +178,8 @@ function CodeEditor() {
 
   // Define a custom theme for the notepad editor
   const handleEditorWillMount = (monaco: Monaco) => {
-    monacoRef.current = monaco;
-    
+    monacoRef.current = monaco
+
     monaco.editor.defineTheme("notepadTheme", {
       base: "vs-dark",
       inherit: true,
@@ -211,7 +195,7 @@ function CodeEditor() {
     })
   }
 
-  // Handle code changes with debounce for analysis
+  // Handle code changes with tracking for analysis
   const handleCodeChange = (value: string | undefined) => {
     const newCode = value || ""
     setCode(newCode)
@@ -227,46 +211,15 @@ function CodeEditor() {
     }
     lastKeyPressTime.current = now
 
-    // Take code snapshot
-    if (codeChangeTimeoutRef.current) {
-      clearTimeout(codeChangeTimeoutRef.current)
+    // Take code snapshot every 10 seconds or significant changes
+    const lastSnapshot = codeSnapshots[codeSnapshots.length - 1]
+    if (
+      !lastSnapshot ||
+      now.getTime() - lastSnapshot.timestamp.getTime() > 10000 ||
+      Math.abs(newCode.length - lastSnapshot.code.length) > 50
+    ) {
+      setCodeSnapshots((prev) => [...prev, { timestamp: now, code: newCode }])
     }
-
-    codeChangeTimeoutRef.current = setTimeout(() => {
-      // Only take snapshot if code has changed significantly
-      const lastSnapshot = codeSnapshots[codeSnapshots.length - 1]
-      if (!lastSnapshot || newCode.length !== lastSnapshot.code.length) {
-        setCodeSnapshots((prev) => [...prev, { timestamp: new Date(), code: newCode }])
-
-        // Update analysis indicator
-        updateAnalysisIndicator()
-
-        // Check if we should trigger analysis
-        if (
-          autoAnalysisEnabled &&
-          codeSnapshots.length > 3 &&
-          (!lastAnalysisTime || new Date().getTime() - lastAnalysisTime.getTime() > 120000)
-        ) {
-          triggerAnalysis()
-        }
-      }
-    }, 2000)
-
-    // Reset inactivity timer
-    if (inactivityTimeoutRef.current) {
-      clearTimeout(inactivityTimeoutRef.current)
-    }
-
-    // Trigger analysis after 30 seconds of inactivity
-    inactivityTimeoutRef.current = setTimeout(() => {
-      if (
-        autoAnalysisEnabled &&
-        newCode.trim().length > 50 &&
-        (!lastAnalysisTime || new Date().getTime() - lastAnalysisTime.getTime() > 60000)
-      ) {
-        triggerAnalysis()
-      }
-    }, 30000)
   }
 
   // Handle notepad content changes
@@ -274,25 +227,29 @@ function CodeEditor() {
     setNotepadContent(value || "")
   }
 
-  // Update the analysis indicator based on current state
-  const updateAnalysisIndicator = () => {
-    const indicators = [
-      "AI observing coding patterns...",
-      "Analyzing approach...",
-      "Evaluating logic...",
-      "Detecting AI patterns...",
-      "Gathering insights...",
-    ]
+  // Function to manually trigger code analysis
+  const analyzeCode = async () => {
+    if (isAnalyzing) return
 
-    setAnalysisIndicator(indicators[Math.floor(Math.random() * indicators.length)])
-  }
+    // Show immediate feedback that the button was clicked
+    toast({
+      title: "Analysis started",
+      description: "Starting code analysis...",
+    })
 
-  // Function to trigger code analysis
-  const triggerAnalysis = async () => {
-    if (geminiApiKey === null || isAnalyzing || code.trim().length < 50) return
+    if (code.trim().length < 10) {
+      toast({
+        title: "Code too short",
+        description: "Please write more code to analyze.",
+        variant: "destructive",
+      })
+      return
+    }
 
     setIsAnalyzing(true)
-    setAnalysisStatus("analyzing")
+    setError(null)
+    setDebugInfo("Analysis started: " + new Date().toLocaleTimeString())
+    setOutput("") // Clear any previous output
 
     try {
       // Prepare analysis context with code snapshots and typing patterns
@@ -308,15 +265,110 @@ function CodeEditor() {
         sessionDuration: sessionStartTime ? Math.floor((new Date().getTime() - sessionStartTime.getTime()) / 1000) : 0,
       }
 
+      // Log the request for debugging
+      console.log("Sending analysis request:", {
+        endpoint: "/app/api/analyze-code",
+        codeLength: code.length,
+        language,
+        snapshotsCount: codeSnapshots.length,
+        typingPatternsCount: typingPatterns.length,
+      })
+
+      setDebugInfo((prev) => prev + "\nSending request to /app/api/analyze-code...")
+
+      // Force the UI to update before making the API call
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
       const response = await fetch("/app/api/analyze-code", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...analysisContext,
-          apiKey: geminiApiKey,
-        }),
+        body: JSON.stringify(analysisContext),
+      })
+
+      setDebugInfo((prev) => prev + `\nResponse status: ${response.status}`)
+      console.log("Analysis response status:", response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        setDebugInfo((prev) => prev + `\nError response: ${errorText.substring(0, 100)}...`)
+        console.error("Analysis API Error:", errorText)
+        throw new Error(`API error: ${response.status} - ${errorText.substring(0, 100)}`)
+      }
+
+      // Try to parse the response
+      let data
+      try {
+        data = await response.json()
+        setDebugInfo((prev) => prev + `\nParsed response successfully`)
+        console.log("Analysis response data:", data)
+      } catch (jsonError) {
+        const errorMessage = jsonError instanceof Error ? jsonError.message : String(jsonError)
+        const responseText = await response.text()
+        setDebugInfo(
+          (prev) => prev + `\nJSON parse error: ${errorMessage}\nRaw response: ${responseText.substring(0, 100)}...`,
+        )
+        console.error("JSON Parse Error:", errorMessage)
+        console.error("Raw Response:", responseText.substring(0, 500))
+        throw new Error(`Failed to parse response: ${errorMessage}`)
+      }
+
+      if (data.error) {
+        setDebugInfo((prev) => prev + `\nAPI returned error: ${data.error}`)
+        throw new Error(data.error)
+      }
+
+      // Set the analysis report
+      setAnalysisReport({
+        approach: data.approach || "No approach analysis available.",
+        logic: data.logic || "No logic analysis available.",
+        aiDetection: data.aiDetection || "AI detection analysis not available.",
+        suggestions: data.suggestions || "No suggestions available.",
+        overallScore: data.overallScore || 0,
+        isMockData: data.isMockData || false,
+      })
+
+      setDebugInfo((prev) => prev + `\nAnalysis complete, showing modal`)
+
+      // Automatically show the analysis modal
+      setShowAnalysisModal(true)
+
+      // Show success toast
+      toast({
+        title: data.isMockData ? "Using Mock Data" : "Analysis Complete",
+        description: data.isMockData
+          ? "Using mock data because the Gemini API is not configured properly."
+          : "Your code has been analyzed successfully.",
+        variant: data.isMockData ? "destructive" : "default",
+      })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.error("Error analyzing code:", error)
+      setError(`Failed to analyze code: ${errorMessage}`)
+      setDebugInfo((prev) => prev + `\nError: ${errorMessage}`)
+
+      // Show error toast
+      toast({
+        title: "Analysis Failed",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
+  // Add this function to the CodeEditor component, right after the analyzeCode function
+  // This will help us debug the Gemini API issues
+
+  const listGeminiModels = async () => {
+    try {
+      setIsAnalyzing(true)
+      setOutput("Fetching available Gemini models...")
+
+      const response = await fetch("/app/api/list-gemini-models", {
+        method: "GET",
       })
 
       if (!response.ok) {
@@ -325,22 +377,16 @@ function CodeEditor() {
 
       const data = await response.json()
 
-      setAnalysisReport({
-        approach: data.approach || "No approach analysis available.",
-        logic: data.logic || "No logic analysis available.",
-        aiDetection: data.aiDetection || "AI detection analysis not available.",
-        suggestions: data.suggestions || "No suggestions available.",
-        overallScore: data.overallScore || 0,
-      })
-
-      setLastAnalysisTime(new Date())
-      setAnalysisStatus("ready")
-
-      // Don't automatically show the modal, just indicate analysis is ready
+      if (data.error) {
+        setOutput(`Error: ${data.error}`)
+      } else if (data.models && data.models.length > 0) {
+        setOutput(`Available Gemini Models:\n\n${data.models.join("\n")}`)
+      } else {
+        setOutput("No models found or you don't have access to any models.")
+      }
     } catch (error) {
-      console.error("Error analyzing code:", error)
-      setError(`Failed to analyze code: ${error instanceof Error ? error.message : String(error)}`)
-      setAnalysisStatus("collecting")
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      setOutput(`Failed to list models: ${errorMessage}`)
     } finally {
       setIsAnalyzing(false)
     }
@@ -417,31 +463,60 @@ OVERALL SCORE: ${analysisReport.overallScore}/10
     }
   }
 
+  // Function to export report as DOCX
+  const exportAsDocx = async () => {
+    if (!analysisReport) return
+
+    setExportLoading(true)
+
+    try {
+      const response = await fetch("/app/api/docx-export", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          report: analysisReport,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`)
+      }
+
+      // Get the blob from the response
+      const blob = await response.blob()
+
+      // Create a download link
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "code-analysis-report.docx"
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("Error exporting DOCX:", error)
+    } finally {
+      setExportLoading(false)
+    }
+  }
+
   // Function to handle export based on format
   const handleExport = () => {
     switch (exportFormat) {
       case "pdf":
         exportAsPdf()
         break
+      case "docx":
+        exportAsDocx()
+        break
       case "txt":
         exportAsText()
         break
       default:
         exportAsPdf()
-    }
-  }
-
-  // Get badge color based on analysis status
-  const getAnalysisStatusColor = () => {
-    switch (analysisStatus) {
-      case "collecting":
-        return "bg-blue-500"
-      case "analyzing":
-        return "bg-yellow-500"
-      case "ready":
-        return "bg-green-500"
-      default:
-        return "bg-gray-500"
     }
   }
 
@@ -525,18 +600,26 @@ OVERALL SCORE: ${analysisReport.overallScore}/10
         <ResizablePanel defaultSize={40}>
           <div className="h-full relative">
             <div className="absolute top-2 right-4 z-10 flex gap-2 items-center">
-              {/* Analysis status indicator */}
-              {analysisStatus !== "idle" && (
-                <div
-                  className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#232534] text-xs"
-                  onClick={() => analysisStatus === "ready" && setShowAnalysisModal(true)}
-                  style={{ cursor: analysisStatus === "ready" ? "pointer" : "default" }}
-                >
-                  <div className={`h-2 w-2 rounded-full ${getAnalysisStatusColor()}`}></div>
-                  <span>{analysisStatus === "ready" ? "Analysis ready - Click to view" : analysisIndicator}</span>
-                </div>
-              )}
+              {/* Analyze button */}
+              <Button
+                onClick={analyzeCode}
+                disabled={isAnalyzing}
+                className="gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+                size="sm"
+              >
+                {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                {isAnalyzing ? "Analyzing..." : "Analyze Code"}
+              </Button>
 
+              {/* Add this button to the UI, right after the Analyze button
+              In the div with className="absolute top-2 right-4 z-10 flex gap-2 items-center"
+              Add this right before the Run button: */}
+
+              <Button onClick={listGeminiModels} className="gap-2 bg-gray-600 hover:bg-gray-700 text-white" size="sm">
+                List Models
+              </Button>
+
+              {/* Run button */}
               <Button onClick={executeCode} disabled={isExecuting} className="gap-2" size="sm">
                 <PlayIcon className="h-4 w-4" />
                 {isExecuting ? "Running..." : "Run Code"}
@@ -565,19 +648,6 @@ OVERALL SCORE: ${analysisReport.overallScore}/10
                 <TerminalIcon className="h-4 w-4" />
                 <span>Output</span>
               </div>
-
-              {/* View analysis button */}
-              {analysisStatus === "ready" && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs flex items-center gap-1"
-                  onClick={() => setShowAnalysisModal(true)}
-                >
-                  <Sparkles className="h-3 w-3" />
-                  View Analysis
-                </Button>
-              )}
             </div>
             <ScrollArea className="h-[calc(100%-2rem)]">
               {isExecuting ? (
@@ -585,13 +655,33 @@ OVERALL SCORE: ${analysisReport.overallScore}/10
                   <div className="animate-spin h-4 w-4 border-2 border-white border-opacity-20 border-t-white rounded-full"></div>
                   <span>Compiling and executing code...</span>
                 </div>
+              ) : isAnalyzing ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-opacity-20 border-t-white rounded-full"></div>
+                  <span>Analyzing code with AI...</span>
+                </div>
               ) : error ? (
                 <pre className="text-red-400 whitespace-pre-wrap">{error}</pre>
+              ) : debugInfo ? (
+                <div>
+                  <div className="text-yellow-400 mb-2">Debug Information:</div>
+                  <pre className="text-gray-400 whitespace-pre-wrap text-xs">{debugInfo}</pre>
+                </div>
               ) : output ? (
                 <pre className="whitespace-pre-wrap">{output}</pre>
               ) : (
                 <div className="text-muted-foreground">
+                  <Alert variant="warning" className="mb-4 bg-yellow-900/30 border-yellow-800">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>API Key Required</AlertTitle>
+                    <AlertDescription>
+                      To get real AI analysis, make sure the GEMINI_API_KEY environment variable is set.
+                    </AlertDescription>
+                  </Alert>
                   Click the Run button to execute your code and see the output here.
+                  <br />
+                  <br />
+                  Click the Analyze button to get AI-powered insights about your code.
                 </div>
               )}
             </ScrollArea>
@@ -614,6 +704,7 @@ OVERALL SCORE: ${analysisReport.overallScore}/10
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pdf">PDF</SelectItem>
+                  <SelectItem value="docx">Word</SelectItem>
                   <SelectItem value="txt">Text</SelectItem>
                 </SelectContent>
               </Select>
@@ -635,6 +726,17 @@ OVERALL SCORE: ${analysisReport.overallScore}/10
             <div ref={reportRef} className="bg-[#1a1b26] text-white p-6 rounded-lg h-full overflow-auto">
               {analysisReport ? (
                 <div className="space-y-6">
+                  {analysisReport.isMockData && (
+                    <Alert variant="destructive" className="bg-red-900/30 border-red-800">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Mock Data</AlertTitle>
+                      <AlertDescription>
+                        This is mock data because the Gemini API key is not configured properly. Please set up your
+                        GEMINI_API_KEY environment variable to get real AI analysis.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
                   <div className="flex items-center justify-between">
                     <h2 className="text-2xl font-bold">Code Analysis Report</h2>
                     <div className="flex items-center gap-2">
@@ -705,3 +807,4 @@ OVERALL SCORE: ${analysisReport.overallScore}/10
 }
 
 export default CodeEditor
+
