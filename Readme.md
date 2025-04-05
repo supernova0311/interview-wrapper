@@ -1,5 +1,5 @@
 
-# 🎯 coding and behavioural Interview Platform 
+# 🎯 AI Intregrated Interview Platform 
 
 Welcome to the *coding Interview Platform, a one-stop solution to revolutionize technical interviews using **AI, **DSA automation, **real-time proctoring, and **interactive candidate preparation*.
 
@@ -7,7 +7,7 @@ Welcome to the *coding Interview Platform, a one-stop solution to revolutionize 
 
 ## 🚀 Live Preview
 
-👉 *Coming Soon* (deployed after hackathon)
+👉 *Coming Soon* 
 
 ---
 
