@@ -13,7 +13,6 @@ export default function LandingPage() {
   const router = useRouter();
   const [isHovering, setIsHovering] = useState<number | null>(null);
 
-  // Redirect if already signed in
   useEffect(() => {
     if (isSignedIn) {
       router.push("/app");
@@ -23,27 +22,30 @@ export default function LandingPage() {
   const features = [
     {
       title: "Live Coding",
-      description: "Real-time collaborative coding environment with syntax highlighting and execution",
+      description:
+        "Real-time collaborative coding environment with syntax highlighting and execution",
       icon: <Code className="h-8 w-8" />,
-      color: "from-blue-400 to-blue-600"
+      color: "from-blue-400 to-blue-600",
     },
     {
       title: "AI Interview Prep",
-      description: "AI-powered interview prep with curated questions and dynamically generated study materials, tailored by skill level and topic.",
+      description:
+        "AI-powered interview prep with curated questions and dynamically generated study materials, tailored by skill level and topic.",
       icon: <BookOpen className="h-8 w-8" />,
-      color: "from-emerald-400 to-emerald-600"
+      color: "from-emerald-400 to-emerald-600",
     },
     {
       title: "AI Analysis",
-      description: "Smart evaluation with performance metrics and improvement suggestions",
+      description:
+        "Smart evaluation with performance metrics and improvement suggestions",
       icon: <Bot className="h-8 w-8" />,
-      color: "from-purple-400 to-purple-600"
-    }
+      color: "from-purple-400 to-purple-600",
+    },
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white overflow-hidden relative">
-      {/* Animated background elements */}
+      {/* Animated Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[...Array(15)].map((_, i) => (
           <motion.div
@@ -54,7 +56,7 @@ export default function LandingPage() {
               y: Math.random() * 100,
               width: Math.random() * 300 + 100,
               height: Math.random() * 300 + 100,
-              opacity: 0.1
+              opacity: 0.1,
             }}
             animate={{
               x: Math.random() * 100 - 50,
@@ -62,14 +64,14 @@ export default function LandingPage() {
               transition: {
                 duration: Math.random() * 15 + 10,
                 repeat: Infinity,
-                repeatType: "reverse"
-              }
+                repeatType: "reverse",
+              },
             }}
           />
         ))}
       </div>
 
-      {/* Glowing gradient border */}
+      {/* Glowing Border */}
       <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-emerald-500 to-transparent animate-pulse" />
 
       <SignedOut>
@@ -80,29 +82,19 @@ export default function LandingPage() {
           transition={{ duration: 0.5 }}
           className="relative flex justify-between items-center p-6 max-w-7xl mx-auto"
         >
-          <motion.div 
+          <motion.div
             whileHover={{ scale: 1.05 }}
             className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent"
           >
             Interview-Wrapper
           </motion.div>
           <div className="flex gap-4">
-          <SignInButton mode="modal" redirectUrl="/app">
-          <motion.div 
-                whileHover={{ scale: 1.05 }} 
+            <SignInButton afterSignInUrl="/app">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-               
-              </motion.div>
-            </SignInButton>
-            <SignInButton mode="modal" redirectUrl="/app">
-            <motion.div 
-                whileHover={{ scale: 1.05 }} 
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button 
-                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 backdrop-blur-sm"
-                >
+                <Button className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 backdrop-blur-sm">
                   Get Started
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -125,42 +117,42 @@ export default function LandingPage() {
               Your Interview Process
             </h1>
             <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-10">
-              The complete platform for conducting and managing technical interviews with ease.
+              The complete platform for conducting and managing technical
+              interviews with ease.
             </p>
             <div className="flex justify-center gap-4">
-              <SignInButton mode="modal" afterSignInUrl="/app">
-                <motion.div 
-                  whileHover={{ scale: 1.05 }} 
+              <SignInButton afterSignInUrl="/app">
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <Button 
-                    size="lg" 
+                  <Button
+                    size="lg"
                     className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 backdrop-blur-sm"
                   >
                     Start Free Trial
                   </Button>
                 </motion.div>
               </SignInButton>
-              <motion.div 
-                whileHover={{ scale: 1.05 }} 
+              <motion.div
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <Button 
-                  size="lg" 
-                  variant="outline" 
+                <Button
+                  size="lg"
+                  variant="outline"
                   className="border-gray-600 text-white hover:bg-gray-700 backdrop-blur-sm"
-                  asChild
                 >
-                 
+                  Learn More
                 </Button>
               </motion.div>
             </div>
           </motion.div>
         </section>
 
-        {/* Features Preview */}
-        <section 
-          id="features" 
+        {/* Features Section */}
+        <section
+          id="features"
           className="relative bg-gray-800/50 py-16 backdrop-blur-sm"
         >
           <div className="container mx-auto px-6">
@@ -190,10 +182,14 @@ export default function LandingPage() {
                   )}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                  <div className={`bg-gradient-to-r ${feature.color} bg-clip-text text-transparent mb-4`}>
+                  <div
+                    className={`bg-gradient-to-r ${feature.color} bg-clip-text text-transparent mb-4`}
+                  >
                     {feature.icon}
                   </div>
-                  <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
+                  <h3 className="text-xl font-semibold mb-3">
+                    {feature.title}
+                  </h3>
                   <p className="text-gray-300">{feature.description}</p>
                 </motion.div>
               ))}
