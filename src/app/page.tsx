@@ -87,16 +87,16 @@ export default function LandingPage() {
             Interview-Wrapper
           </motion.div>
           <div className="flex gap-4">
-            <SignInButton mode="modal" afterSignInUrl="/app">
-              <motion.div 
+          <SignInButton mode="modal" redirectUrl="/app">
+          <motion.div 
                 whileHover={{ scale: 1.05 }} 
                 whileTap={{ scale: 0.95 }}
               >
                
               </motion.div>
             </SignInButton>
-            <SignInButton mode="modal" afterSignInUrl="/app">
-              <motion.div 
+            <SignInButton mode="modal" redirectUrl="/app">
+            <motion.div 
                 whileHover={{ scale: 1.05 }} 
                 whileTap={{ scale: 0.95 }}
               >

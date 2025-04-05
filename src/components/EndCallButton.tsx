@@ -32,7 +32,7 @@ function EndCallButton() {
         status: "completed",
       });
 
-      router.push("/");
+      router.push("/app/");
       toast.success("Meeting ended for everyone");
     } catch (error) {
       console.log(error);

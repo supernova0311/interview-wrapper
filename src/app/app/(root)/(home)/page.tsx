@@ -32,7 +32,7 @@ export default function Home() {
         setShowModal(true);
         break;
       default:
-        router.push(`/${title.toLowerCase()}`);
+        router.push(`/app/${title.toLowerCase()}`);
     }
   };
 

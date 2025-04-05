@@ -39,7 +39,7 @@ function DashboardPage() {
   return (
     <div className="container mx-auto py-10">
       <div className="flex items-center mb-8">
-        <Link href="/schedule">
+        <Link href="/app/schedule">
           <Button>Schedule New Interview</Button>
         </Link>
       </div>
