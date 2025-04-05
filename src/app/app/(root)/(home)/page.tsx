@@ -43,7 +43,7 @@ export default function Home() {
       {/* MODULE BAR */}
       <div className="flex flex-wrap gap-4 mb-8">
         <Link
-          href="/ai-bot"
+          href="https://interview-wrapper-ai-bot.vercel.app/"
           className="flex-1 min-w-[200px] px-6 py-3 bg-gradient-to-r from-secondary to-secondary/90 text-white rounded-lg border border-secondary/20 shadow-sm hover:shadow-md transition-all duration-300 font-medium text-center flex items-center justify-center gap-2 hover:scale-[1.02]"
         >
           <span className="whitespace-nowrap">AI Bot</span>
