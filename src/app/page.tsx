@@ -89,7 +89,7 @@ export default function LandingPage() {
             Interview-Wrapper
           </motion.div>
           <div className="flex gap-4">
-            <SignInButton afterSignInUrl="/app">
+            <SignInButton >
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -121,7 +121,7 @@ export default function LandingPage() {
               interviews with ease.
             </p>
             <div className="flex justify-center gap-4">
-              <SignInButton afterSignInUrl="/app">
+              <SignInButton >
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
